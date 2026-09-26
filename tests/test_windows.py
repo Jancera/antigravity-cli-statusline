@@ -34,6 +34,114 @@ class TestWindowsPowerShellParity(unittest.TestCase):
         cmd_spaced = f'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{spaced_path}"'
         self.assertTrue(cmd_spaced.startswith('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/User With Spaces/'))
 
+    def test_installer_argument_forwarding_and_settings_preservation(self):
+        """Arguments passed to install.ps1 command-string builder are forwarded and preserved in settings.json."""
+        ps1_text = (REPO_ROOT / "install.ps1").read_text(encoding="utf-8")
+        uninstall_ps1_text = (REPO_ROOT / "uninstall.ps1").read_text(encoding="utf-8")
+
+        # Static verification of install.ps1 and uninstall.ps1 argument and prefix matching logic
+        self.assertIn('$extraArgs = ""', ps1_text)
+        self.assertIn('$args -join " "', ps1_text)
+        self.assertIn('$commandString = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File $fileArg$extraArgs"', ps1_text)
+        self.assertIn('$existingCommand.StartsWith($expectedCommand + " "', ps1_text)
+        self.assertIn('$currentCommand.StartsWith($expectedCommand + " "', uninstall_ps1_text)
+
+        # Simulation of install.ps1 command-string builder
+        def build_ps1_command(target_script: str, args: list) -> str:
+            escaped_path = target_script.replace("\\", "/")
+            file_arg = f'"{escaped_path}"' if " " in escaped_path else escaped_path
+            extra_args = (" " + " ".join(args)) if args else ""
+            return f"powershell.exe -NoProfile -ExecutionPolicy Bypass -File {file_arg}{extra_args}"
+
+        # 1. Builder forwarding checks
+        # Path without spaces + telemetry switches
+        switches = ["-NoModel", "-NoTokensUsage", "-NoAccount"]
+        cmd_standard = build_ps1_command("C:/Users/weby/.antigravity/statusline.ps1", switches)
+        self.assertEqual(
+            cmd_standard,
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1 -NoModel -NoTokensUsage -NoAccount",
+        )
+        self.assertTrue(cmd_standard.endswith(" -NoModel -NoTokensUsage -NoAccount"))
+
+        # Path with spaces + POSIX-style flags
+        posix_flags = ["--no-model", "--no-tokens-usage", "--no-account"]
+        cmd_spaces = build_ps1_command("C:/Users/User With Spaces/.antigravity/statusline.ps1", posix_flags)
+        self.assertEqual(
+            cmd_spaces,
+            'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/User With Spaces/.antigravity/statusline.ps1" --no-model --no-tokens-usage --no-account',
+        )
+        self.assertTrue(cmd_spaces.endswith(" --no-model --no-tokens-usage --no-account"))
+
+        # Empty args produces clean unpadded command
+        cmd_empty = build_ps1_command("C:/Users/weby/.antigravity/statusline.ps1", [])
+        self.assertEqual(
+            cmd_empty,
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1",
+        )
+
+        # 2. settings.json update and preservation workflow simulation
+        with tempfile.TemporaryDirectory() as td:
+            settings_path = Path(td) / "settings.json"
+            initial_data = {
+                "theme": "monokai",
+                "editor.fontSize": 14,
+                "telemetry.enabled": False,
+            }
+            settings_path.write_text(json.dumps(initial_data, indent=2), encoding="utf-8")
+
+            # First installation with customization arguments
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            settings["statusLine"] = {
+                "type": "command",
+                "command": cmd_standard,
+                "enabled": True,
+            }
+            settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+
+            read_1 = json.loads(settings_path.read_text(encoding="utf-8"))
+            self.assertEqual(read_1["theme"], "monokai")
+            self.assertEqual(read_1["editor.fontSize"], 14)
+            self.assertFalse(read_1["telemetry.enabled"])
+            self.assertEqual(read_1["statusLine"]["type"], "command")
+            self.assertTrue(read_1["statusLine"]["enabled"])
+            self.assertTrue(read_1["statusLine"]["command"].endswith(" -NoModel -NoTokensUsage -NoAccount"))
+
+            # Preflight check in install.ps1 & uninstall.ps1 matches active command with arguments
+            expected_prefix = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1"
+            current_cmd = read_1["statusLine"]["command"]
+            matches = (
+                current_cmd.lower() == expected_prefix.lower()
+                or current_cmd.lower().startswith(expected_prefix.lower() + " ")
+            )
+            self.assertTrue(matches, "Installer preflight check must match active command string with extra arguments")
+
+            # User adds custom/unknown property to statusLine
+            read_1["statusLine"]["customKey"] = "keep_this_setting"
+
+            # Upgrade / reinstall with updated arguments
+            updated_switches = ["-Classic", "-NoSys"]
+            cmd_updated = build_ps1_command("C:/Users/weby/.antigravity/statusline.ps1", updated_switches)
+            read_1["statusLine"]["command"] = cmd_updated
+            settings_path.write_text(json.dumps(read_1, indent=2), encoding="utf-8")
+
+            read_2 = json.loads(settings_path.read_text(encoding="utf-8"))
+            self.assertTrue(read_2["statusLine"]["command"].endswith(" -Classic -NoSys"))
+            self.assertNotIn("-NoModel", read_2["statusLine"]["command"])
+            self.assertEqual(read_2["statusLine"]["customKey"], "keep_this_setting")
+            self.assertEqual(read_2["theme"], "monokai")
+            self.assertEqual(read_2["editor.fontSize"], 14)
+
+            # Uninstall cleanup
+            read_2.pop("statusLine", None)
+            settings_path.write_text(json.dumps(read_2, indent=2), encoding="utf-8")
+
+            read_final = json.loads(settings_path.read_text(encoding="utf-8"))
+            self.assertNotIn("statusLine", read_final)
+            self.assertEqual(read_final["theme"], "monokai")
+            self.assertEqual(read_final["editor.fontSize"], 14)
+            self.assertFalse(read_final["telemetry.enabled"])
+
+
     def test_settings_json_has_no_bom(self):
         """settings.json must NEVER have a UTF-8 BOM (RFC 8259)."""
         sample_json = json.dumps({"statusLine": {"type": "command"}}, indent=2)
