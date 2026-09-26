@@ -1444,22 +1444,24 @@ else
 fi
 if [ "$max_vis" -lt 40 ]; then max_vis=40; fi
 
-for badge in "${BADGE_LIST[@]}"; do
-  [ -z "$badge" ] && continue
-  b_vis=$(visible_len "$badge")
-  
-  if [ -z "$curr_line" ]; then
-    curr_line="$badge"
-    curr_vis=$b_vis
-  elif [ $(( curr_vis + 2 + b_vis )) -le "$max_vis" ]; then
-    curr_line="${curr_line}  ${badge}"
-    curr_vis=$(( curr_vis + 2 + b_vis ))
-  else
-    PACKED_LINES+=("$curr_line")
-    curr_line="$badge"
-    curr_vis=$b_vis
-  fi
-done
+if [ "${#BADGE_LIST[@]}" -gt 0 ]; then
+  for badge in "${BADGE_LIST[@]}"; do
+    [ -z "$badge" ] && continue
+    b_vis=$(visible_len "$badge")
+    
+    if [ -z "$curr_line" ]; then
+      curr_line="$badge"
+      curr_vis=$b_vis
+    elif [ $(( curr_vis + 2 + b_vis )) -le "$max_vis" ]; then
+      curr_line="${curr_line}  ${badge}"
+      curr_vis=$(( curr_vis + 2 + b_vis ))
+    else
+      PACKED_LINES+=("$curr_line")
+      curr_line="$badge"
+      curr_vis=$b_vis
+    fi
+  done
+fi
 [ -n "$curr_line" ] && PACKED_LINES+=("$curr_line")
 
 # Output rendering with dynamic box borders
@@ -1469,9 +1471,11 @@ if [ "$USE_CLASSIC_ICONS" = "true" ]; then
   if [ -n "$LINE1" ]; then
     echo -e "${LINE1}"
   fi
-  for pline in "${PACKED_LINES[@]}"; do
-    echo -e "${pline}"
-  done
+  if [ "$total_packed" -gt 0 ]; then
+    for pline in "${PACKED_LINES[@]}"; do
+      echo -e "${pline}"
+    done
+  fi
 else
   if [ -n "$LINE1" ]; then
     echo -e "${FG_GRAY}╭─${R}${LINE1}"
