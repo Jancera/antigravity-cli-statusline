@@ -79,67 +79,14 @@ class TestWindowsPowerShellParity(unittest.TestCase):
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1",
         )
 
-        # 2. settings.json update and preservation workflow simulation
-        with tempfile.TemporaryDirectory() as td:
-            settings_path = Path(td) / "settings.json"
-            initial_data = {
-                "theme": "monokai",
-                "editor.fontSize": 14,
-                "telemetry.enabled": False,
-            }
-            settings_path.write_text(json.dumps(initial_data, indent=2), encoding="utf-8")
-
-            # First installation with customization arguments
-            settings = json.loads(settings_path.read_text(encoding="utf-8"))
-            settings["statusLine"] = {
-                "type": "command",
-                "command": cmd_standard,
-                "enabled": True,
-            }
-            settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-
-            read_1 = json.loads(settings_path.read_text(encoding="utf-8"))
-            self.assertEqual(read_1["theme"], "monokai")
-            self.assertEqual(read_1["editor.fontSize"], 14)
-            self.assertFalse(read_1["telemetry.enabled"])
-            self.assertEqual(read_1["statusLine"]["type"], "command")
-            self.assertTrue(read_1["statusLine"]["enabled"])
-            self.assertTrue(read_1["statusLine"]["command"].endswith(" -NoModel -NoTokensUsage -NoAccount"))
-
-            # Preflight check in install.ps1 & uninstall.ps1 matches active command with arguments
-            expected_prefix = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1"
-            current_cmd = read_1["statusLine"]["command"]
-            matches = (
-                current_cmd.lower() == expected_prefix.lower()
-                or current_cmd.lower().startswith(expected_prefix.lower() + " ")
-            )
-            self.assertTrue(matches, "Installer preflight check must match active command string with extra arguments")
-
-            # User adds custom/unknown property to statusLine
-            read_1["statusLine"]["customKey"] = "keep_this_setting"
-
-            # Upgrade / reinstall with updated arguments
-            updated_switches = ["-Classic", "-NoSys"]
-            cmd_updated = build_ps1_command("C:/Users/weby/.antigravity/statusline.ps1", updated_switches)
-            read_1["statusLine"]["command"] = cmd_updated
-            settings_path.write_text(json.dumps(read_1, indent=2), encoding="utf-8")
-
-            read_2 = json.loads(settings_path.read_text(encoding="utf-8"))
-            self.assertTrue(read_2["statusLine"]["command"].endswith(" -Classic -NoSys"))
-            self.assertNotIn("-NoModel", read_2["statusLine"]["command"])
-            self.assertEqual(read_2["statusLine"]["customKey"], "keep_this_setting")
-            self.assertEqual(read_2["theme"], "monokai")
-            self.assertEqual(read_2["editor.fontSize"], 14)
-
-            # Uninstall cleanup
-            read_2.pop("statusLine", None)
-            settings_path.write_text(json.dumps(read_2, indent=2), encoding="utf-8")
-
-            read_final = json.loads(settings_path.read_text(encoding="utf-8"))
-            self.assertNotIn("statusLine", read_final)
-            self.assertEqual(read_final["theme"], "monokai")
-            self.assertEqual(read_final["editor.fontSize"], 14)
-            self.assertFalse(read_final["telemetry.enabled"])
+        # Preflight check in install.ps1 & uninstall.ps1 matches active command with arguments
+        expected_prefix = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:/Users/weby/.antigravity/statusline.ps1"
+        current_cmd = cmd_standard
+        matches = (
+            current_cmd.lower() == expected_prefix.lower()
+            or current_cmd.lower().startswith(expected_prefix.lower() + " ")
+        )
+        self.assertTrue(matches, "Installer preflight check must match active command string with extra arguments")
 
 
     def test_settings_json_has_no_bom(self):

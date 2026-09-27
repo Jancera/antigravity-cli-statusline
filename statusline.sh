@@ -1284,7 +1284,7 @@ done
 if [ "$SHOW_DIR" = "true" ] && [ -n "$CWD_SHORT" ]; then
   d_disp=$(truncate_str "$CWD_SHORT" "$max_d")
   d_seg="${ICON_DIR} ${d_disp}"
-  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" "${ACTIVE_SEGS[@]}" "$d_seg")" -le "$COLS" ]; then
+  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" ${ACTIVE_SEGS[@]+"${ACTIVE_SEGS[@]}"} "$d_seg")" -le "$COLS" ]; then
     ACTIVE_SEGS+=("$d_seg")
     ACTIVE_BGS+=("$BG_DIR")
     ACTIVE_FGS+=("$FG_DIR_TEXT")
@@ -1294,7 +1294,7 @@ fi
 # 6. Conversation
 if [ "$SHOW_CONV" = "true" ] && [ -n "$CONV_ID" ] && [ "$COLS" -ge 80 ]; then
   conv_seg="${ICON_CONV} ${CONV_ID:0:8}"
-  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" "${ACTIVE_SEGS[@]}" "$conv_seg")" -le "$COLS" ]; then
+  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" ${ACTIVE_SEGS[@]+"${ACTIVE_SEGS[@]}"} "$conv_seg")" -le "$COLS" ]; then
     ACTIVE_SEGS+=("$conv_seg")
     ACTIVE_BGS+=("$BG_META")
     ACTIVE_FGS+=("$FG_META_TEXT")
@@ -1317,7 +1317,7 @@ if [ "$SHOW_ACCOUNT" = "true" ] && { [ -n "$PLAN_TIER" ] || [ -n "$USER_EMAIL" ]
   else
     u_seg="👤 ${u_label}"
   fi
-  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" "${ACTIVE_SEGS[@]}" "$u_seg")" -le "$COLS" ]; then
+  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" ${ACTIVE_SEGS[@]+"${ACTIVE_SEGS[@]}"} "$u_seg")" -le "$COLS" ]; then
     ACTIVE_SEGS+=("$u_seg")
     ACTIVE_BGS+=("$BG_META")
     ACTIVE_FGS+=("$FG_META_TEXT")
@@ -1332,7 +1332,7 @@ if [ "$SHOW_HOST" = "true" ] && [ -n "$HOST_INFO" ] && [ "$COLS" -ge 110 ]; then
   else
     host_seg="󰒋 ${host_label}"
   fi
-  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" "${ACTIVE_SEGS[@]}" "$host_seg")" -le "$COLS" ]; then
+  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" ${ACTIVE_SEGS[@]+"${ACTIVE_SEGS[@]}"} "$host_seg")" -le "$COLS" ]; then
     ACTIVE_SEGS+=("$host_seg")
     ACTIVE_BGS+=("$BG_META")
     ACTIVE_FGS+=("$FG_META_TEXT")
@@ -1342,7 +1342,7 @@ fi
 # 9. Version
 if [ "$SHOW_VERSION" = "true" ] && [ -n "$CLI_VERSION" ] && [ "$COLS" -ge 120 ]; then
   ver_label=$(truncate_str "v${CLI_VERSION}" 10)
-  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" "${ACTIVE_SEGS[@]}" "$ver_label")" -le "$COLS" ]; then
+  if [ "$(calc_line1_len "$USE_CLASSIC_ICONS" ${ACTIVE_SEGS[@]+"${ACTIVE_SEGS[@]}"} "$ver_label")" -le "$COLS" ]; then
     ACTIVE_SEGS+=("$ver_label")
     ACTIVE_BGS+=("$BG_META")
     ACTIVE_FGS+=("$FG_META_TEXT")

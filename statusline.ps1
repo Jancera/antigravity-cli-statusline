@@ -474,7 +474,7 @@ function Format-Line1($segments) {
         $txt = if ($item -is [hashtable] -or ($item.PSObject -and $item.PSObject.Properties['text'])) { $item.text } else { $item.ToString() }
         if (-not $txt) { continue }
         if ($res.Length -eq 0) {
-            if ($txt.StartsWith("${FG_") -or $txt.StartsWith("$ESC")) {
+            if ($txt.StartsWith("$ESC")) {
                 if ($txt -match '\x1b\[1m ') {
                     $res = $txt
                 } else {

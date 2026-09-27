@@ -162,13 +162,18 @@ function Invoke-StatuslineProcess($payload, [string[]]$arguments) {
     $pInfo.Arguments = $argList -join " "
     $pInfo.RedirectStandardInput = $true
     $pInfo.RedirectStandardOutput = $true
+    $pInfo.RedirectStandardError = $true
     $pInfo.UseShellExecute = $false
     $pInfo.CreateNoWindow = $true
     $proc = [System.Diagnostics.Process]::Start($pInfo)
     $proc.StandardInput.Write($payload)
     $proc.StandardInput.Close()
-    $stdout = $proc.StandardOutput.ReadToEnd()
-    $proc.WaitForExit()
+    $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+    if (-not $proc.WaitForExit(15000)) {
+        try { $proc.Kill() } catch {}
+        throw "statusline.ps1 execution timed out"
+    }
+    $stdout = $stdoutTask.Result
     return $stdout
 }
 
@@ -179,7 +184,7 @@ Write-Host "--- Test 8: Telemetry Suppression Flags & Switch Parity ---"
 $baseOut = Invoke-StatuslineProcess -Payload $testPayload -Arguments @()
 Assert-Condition ($baseOut -match "WORKING") "Baseline output contains agent state"
 Assert-Condition ($baseOut -match "NORMAL") "Baseline output contains vim mode"
-Assert-Condition ($baseOut -match "main") "Baseline output contains VCS branch"
+Assert-Condition ($baseOut -match '(main| main)') "Baseline output contains VCS branch"
 Assert-Condition ($baseOut -match "Gemini 2\.0 Flash") "Baseline output contains active model"
 Assert-Condition ($baseOut -match "ctx") "Baseline output contains context bar"
 

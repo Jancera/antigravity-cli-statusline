@@ -298,7 +298,7 @@ out=$(cat "${FIXTURES}/full_payload.json" | STATUSLINE_POWER_SUPPLY_DIR="$MOCK_P
 assert_not_contains "$(echo "$out" | strip_ansi)" "88.2K/61.1K" "--no-tokens suppresses token usage badge"
 
 # --no-cost
-out=$(cat "${FIXTURES}/full_payload.json" | STATUSLINE_POWER_SUPPLY_DIR="$MOCK_PSY/s1" COLUMNS=150 bash "$STATUSLINE" --no-cost 2>&1 || true)
+out=$(cat "${FIXTURES}/full_payload.json" | STATUSLINE_POWER_SUPPLY_DIR="$MOCK_PSY/s1" COLUMNS=150 bash "$STATUSLINE" --no-cost 2>&1)
 res=$?
 assert_exit_code "$res" 0 "--no-cost flag runs safely"
 
