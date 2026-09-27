@@ -169,11 +169,16 @@ function Invoke-StatuslineProcess($payload, [string[]]$arguments) {
     $proc.StandardInput.Write($payload)
     $proc.StandardInput.Close()
     $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+    $stderrTask = $proc.StandardError.ReadToEndAsync()
     if (-not $proc.WaitForExit(15000)) {
         try { $proc.Kill() } catch {}
         throw "statusline.ps1 execution timed out"
     }
     $stdout = $stdoutTask.Result
+    $stderr = $stderrTask.Result
+    if ($proc.ExitCode -ne 0) {
+        throw "statusline.ps1 exited with code $($proc.ExitCode): $stderr"
+    }
     return $stdout
 }
 
